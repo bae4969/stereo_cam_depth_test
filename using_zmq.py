@@ -44,17 +44,31 @@ stereo = cv.StereoSGBM_create(
 
 ##############################################################################################
 
+fig, axs = plt.subplots(1, 3, figsize=(12, 4), dpi=200)
+
+key_pressed = None
+def on_key(event):
+	global key_pressed
+	key_pressed = event.key
+
+fig.canvas.mpl_connect('key_press_event', on_key)
+
+im = axs[2].imshow(np.zeros((100, 100)), cmap='inferno', vmin=0, vmax=5000)
+cbar = fig.colorbar(im, ax=axs[2], fraction=0.046, pad=0.04, label="Dist (mm)")
+
+##############################################################################################
+
 context = zmq.Context()
 sub_socket = context.socket(zmq.SUB)
 sub_socket.setsockopt(zmq.RCVHWM, 1)
 sub_socket.setsockopt(zmq.RCVTIMEO, 10)
-sub_socket.setsockopt_string(zmq.SUBSCRIBE, "STATE_CAMERA_SENSOR")  # 토픽 필터
+sub_socket.setsockopt_string(zmq.SUBSCRIBE, "STATE_CAMERA_SENSOR")
 sub_socket.connect("tcp://135.135.135.32:45000")
 
 poller = zmq.Poller()
 poller.register(sub_socket, zmq.POLLIN)
 
-while True:
+while key_pressed != 'q':
     msg_parts = None
     while True:
         try:
@@ -78,22 +92,30 @@ while True:
     right_rect = cv.remap(color_right, right_map1, right_map2, cv.INTER_LINEAR)
     
     if num_channels is 1:
-        left_rect = cv.cvtColor(left_rect, cv.COLOR_RGB2GRAY)
-        right_rect = cv.cvtColor(right_rect, cv.COLOR_RGB2GRAY)
+        left_input = cv.cvtColor(left_rect, cv.COLOR_RGB2GRAY)
+        right_input = cv.cvtColor(right_rect, cv.COLOR_RGB2GRAY)
+    else:
+        left_input = left_rect
+        right_input = right_rect
 
-    disparity = stereo.compute(left_rect, right_rect).astype(np.float32) / 16.0
+    disparity = stereo.compute(left_input, right_input).astype(np.float32) / 16.0
     disparity = disparity[:,num_disp:]
         
     depth_map = (focal_length * baseline_mm) / disparity
     depth_map[(depth_map < 0) | (5000 < depth_map)] = np.nan
 
-    plt.imshow(depth_map, cmap='jet', vmin=0, vmax=5000)
-    plt.title('depth')
-    plt.colorbar()
+    axs[0].clear()
+    axs[0].imshow(left_rect[:, :, [2, 1, 0]])
+    axs[0].set_title(f"left")
+    
+    axs[1].clear()
+    axs[1].imshow(right_rect[:, :, [2, 1, 0]])
+    axs[1].set_title(f"right")
+    
+    axs[2].clear()
+    im = axs[2].imshow(depth_map, cmap='inferno', vmin=0, vmax=5000)
+    cbar.update_normal(im)
+    axs[2].set_title(f"depth")
+
+    plt.tight_layout()
     plt.pause(0.001)
-    plt.clf()
-    cv.imshow('left', left_rect)
-    cv.imshow('right', right_rect)
-    key = cv.waitKey(1)
-    if key == 'q':
-        break

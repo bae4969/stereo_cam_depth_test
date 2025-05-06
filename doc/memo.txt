@@ -1,0 +1,23 @@
+ideal hardware setting
+
+	camera
+
+		difference : 78.5, 0, 0
+		direction : 0, 0, 1
+
+
+stereo calibration
+
+	chess grid info
+
+		block size : 25mm
+		row : 8
+		col : 11
+
+	with 585mm distance 
+		total real width : 656pxl
+		mpp : 0.4192mm/pxl
+
+		x diff : about -4 pxl
+		y diff : about +25 pxl
+

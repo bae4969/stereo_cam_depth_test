@@ -9,6 +9,10 @@ def GetVideoCapcture(filepath:str):
     return video_cap
 
 
+def GetMaxFrameIndex(video_cap: cv.VideoCapture):
+    return int(video_cap.get(cv.CAP_PROP_FRAME_COUNT))
+
+
 def GetFrameWithTimeStamp(video_cap: cv.VideoCapture, timestamp_sec: int):
     fps = video_cap.get(cv.CAP_PROP_FPS)
     total_frames = int(video_cap.get(cv.CAP_PROP_FRAME_COUNT))
