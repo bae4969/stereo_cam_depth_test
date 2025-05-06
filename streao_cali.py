@@ -1,5 +1,6 @@
 import cv2 as cv
 import numpy as np
+from matplotlib import pyplot as plt
 import tifffile
 import MyCommon
 import RawVideoFunc
@@ -21,6 +22,20 @@ target_object_pts *= square_size
 
 ##############################################################################################
 
+fig, axs = plt.subplots(1, 2, figsize=(10, 4), dpi=300)
+
+key_pressed = None
+def on_key(event):
+	global key_pressed
+	key_pressed = event.key
+
+fig.canvas.mpl_connect('key_press_event', on_key)
+
+axs[0].set_title(f"left")
+axs[1].set_title(f"right")
+
+##############################################################################################
+
 video_cap = RawVideoFunc.GetVideoCapcture(video_src_path)
 if video_cap is None:
     print("Fail to open")
@@ -36,7 +51,7 @@ while True:
     ref_frame, color_left, color_right = RawVideoFunc.GetFrameWithIndex(
         video_cap, frame_idx
     )
-    frame_idx += 30
+    frame_idx += 1
     if ref_frame is False:
         break
 
@@ -60,12 +75,59 @@ while True:
     right_object_pts = cv.cornerSubPix(
         gray_right, right_object_pts, (11, 11), (-1, -1), criteria
     )
+    
+    cv.drawChessboardCorners(color_left, checkerboard_size, left_object_pts, ret_left)
+    cv.drawChessboardCorners(color_right, checkerboard_size, right_object_pts, ret_right)
+    
+    axs[0].clear()
+    axs[1].clear()
+    axs[0].imshow(color_left[:, :, [2, 1, 0]])
+    axs[1].imshow(color_right[:, :, [2, 1, 0]])
+    plt.tight_layout()
+    plt.pause(0.01)
 
-    target_object_pts_list.append(target_object_pts)
-    left_object_pts_list.append(left_object_pts)
-    right_object_pts_list.append(right_object_pts)
+    is_add_frame = False
+    while key_pressed is None or key_pressed == 'shift':
+        plt.pause(0.01)
+
+    if key_pressed == 'up':
+        is_add_frame = True
+
+    elif key_pressed == 'down':
+        is_add_frame = False
+
+    elif key_pressed == 'right':
+        is_add_frame = True
+        key_pressed = None
+
+    elif key_pressed == 'shift+right':
+        is_add_frame = True
+        key_pressed = None
+        frame_idx += 10
+
+    elif key_pressed == 'left':
+        is_add_frame = False
+        key_pressed = None
+
+    elif key_pressed == 'shift+left':
+        is_add_frame = False
+        key_pressed = None
+        frame_idx += 10
+
+    else:
+        print("중단됨.")
+        exit()
+
+    if is_add_frame is True:
+        target_object_pts_list.append(target_object_pts)
+        left_object_pts_list.append(left_object_pts)
+        right_object_pts_list.append(right_object_pts)
+        print(f"[{frame_idx}] 추가됨")
+    else:
+        print(f"[{frame_idx}] 스킵됨")
 
 video_cap.release()
+plt.close()
 
 ##############################################################################################
 
@@ -94,7 +156,7 @@ _, _, _, _, _, R, T, E, F = cv.stereoCalibrate(
     ),
 )
 
-T = np.array([[-78.5, 0, 0]], dtype=np.float64).T
+# T = np.array([[-78.5, 0, 0]], dtype=np.float64).T
 
 R1, R2, P1, P2, Q, roi1, roi2 = cv.stereoRectify(
     K1,

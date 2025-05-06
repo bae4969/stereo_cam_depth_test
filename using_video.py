@@ -9,8 +9,8 @@ import RawVideoFunc
 
 My = MyCommon("D:/res", "STEREO_VIDEO", "TEST")
 
-video_src_path = My.GetSrcFilePath("250505/record_20250505_1104.mp4")
-# video_src_path = My.GetSrcFilePath("moving.mp4")
+video_src_path = My.GetSrcFilePath("250505/record_20250505_1419.mp4")
+video_src_path = My.GetSrcFilePath("moving.mp4")
 
 T = tifffile.imread(My.GetSrcFilePath("calibration_data/T.tif"))
 P1 = tifffile.imread(My.GetSrcFilePath("calibration_data/P1.tif"))
@@ -28,7 +28,7 @@ num_disp = int(math.ceil(max_disp / 16.0)) * 16
 
 min_disp = 0
 num_channels = 1
-block_size = 11
+block_size = 9
 
 stereo = cv.StereoSGBM_create(
     minDisparity=min_disp,
@@ -44,6 +44,9 @@ stereo = cv.StereoSGBM_create(
 
 ##############################################################################################
 
+min_visualize_mm = 0
+max_visualize_mm = 6000
+
 fig, axs = plt.subplots(1, 3, figsize=(12, 4), dpi=200)
 
 key_pressed = None
@@ -53,7 +56,11 @@ def on_key(event):
 
 fig.canvas.mpl_connect('key_press_event', on_key)
 
-im = axs[2].imshow(np.zeros((100, 100)), cmap='inferno', vmin=0, vmax=5000)
+axs[0].set_title(f"left")
+axs[1].set_title(f"right")
+axs[2].set_title(f"depth")
+
+im = axs[2].imshow(np.zeros((100, 100)), cmap='inferno', vmin=min_visualize_mm, vmax=max_visualize_mm)
 cbar = fig.colorbar(im, ax=axs[2], fraction=0.046, pad=0.04, label="Dist (mm)")
 
 ##############################################################################################
@@ -63,8 +70,8 @@ if video is None:
     print('Fail to open video file!')
     exit(-1)
 
-running_state = True
-cur_idx = 0
+running_state = False
+cur_idx = -1
 nxt_idx = 0
 max_idx = RawVideoFunc.GetMaxFrameIndex(video)
 while key_pressed != 'q':
@@ -80,7 +87,7 @@ while key_pressed != 'q':
     elif key_pressed == 'shift+left':
         nxt_idx = max(cur_idx - 300, 0)
     elif key_pressed == 'ctrl+shift+left':
-        nxt_idx = max(cur_idx - 3000, max_idx)
+        nxt_idx = max(cur_idx - 3000, 0)
     elif key_pressed == 'right':
         nxt_idx = min(cur_idx + 10, max_idx)
     elif key_pressed == 'alt+right':
@@ -94,7 +101,7 @@ while key_pressed != 'q':
     elif running_state is True:
         nxt_idx = min(cur_idx + 10, max_idx)
     else:
-        nxt_idx = cur_idx
+        nxt_idx = max(cur_idx, 0)
 
     key_pressed = None
     if nxt_idx == cur_idx:
@@ -121,20 +128,14 @@ while key_pressed != 'q':
     disparity = disparity[:,num_disp:]
         
     depth_map = (focal_length * baseline_mm) / disparity
-    depth_map[(depth_map < 0) | (5000 < depth_map)] = np.nan
+    depth_map[(depth_map < min_visualize_mm) | (max_visualize_mm < depth_map)] = np.nan
 
     axs[0].clear()
-    axs[0].imshow(left_rect[:, :, [2, 1, 0]])
-    axs[0].set_title(f"left")
-    
     axs[1].clear()
-    axs[1].imshow(right_rect[:, :, [2, 1, 0]])
-    axs[1].set_title(f"right")
-    
     axs[2].clear()
-    im = axs[2].imshow(depth_map, cmap='inferno', vmin=0, vmax=5000)
+    axs[0].imshow(left_rect[:, :, [2, 1, 0]])
+    axs[1].imshow(right_rect[:, :, [2, 1, 0]])
+    im = axs[2].imshow(depth_map, cmap='inferno', vmin=min_visualize_mm, vmax=max_visualize_mm)
     cbar.update_normal(im)
-    axs[2].set_title(f"depth")
-
     plt.tight_layout()
     plt.pause(0.001)

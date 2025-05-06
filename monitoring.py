@@ -22,33 +22,13 @@ right_map2 = tifffile.imread(My.GetSrcFilePath("calibration_data/right_map2.tif"
 image_size = (960, 720)
 focal_length = P1[0, 0]
 baseline_mm = abs(T[0])
-min_depth_mm = 1000
-max_disp = (focal_length * baseline_mm) / min_depth_mm
-num_disp = int(math.ceil(max_disp / 16.0)) * 16
-
-min_disp = 0
-num_channels = 1
-block_size = 11
-
-stereo = cv.StereoSGBM_create(
-    minDisparity=min_disp,
-    numDisparities=num_disp,
-    blockSize=block_size,
-    P1=8 * num_channels * block_size**2,
-    P2=32 * num_channels * block_size**2,
-    disp12MaxDiff=1,
-    uniquenessRatio=10,
-    speckleWindowSize=100,
-    speckleRange=2,
-    preFilterCap=63,
-)
 
 ##############################################################################################
 
 min_visualize_mm = 0
 max_visualize_mm = 6000
 
-fig, axs = plt.subplots(1, 3, figsize=(12, 4), dpi=200)
+fig, axs = plt.subplots(1, 2, figsize=(10, 4), dpi=300)
 
 key_pressed = None
 def on_key(event):
@@ -59,10 +39,6 @@ fig.canvas.mpl_connect('key_press_event', on_key)
 
 axs[0].set_title(f"left")
 axs[1].set_title(f"right")
-axs[2].set_title(f"depth")
-
-im = axs[2].imshow(np.zeros((100, 100)))
-cbar = fig.colorbar(im, ax=axs[2], fraction=0.046, pad=0.04, label="Dist (mm)")
 
 ##############################################################################################
 
@@ -96,28 +72,9 @@ while key_pressed != 'q':
     if color_left is None or color_right is None:
         continue
 
-    left_rect = cv.remap(color_left, left_map1, left_map2, cv.INTER_LINEAR)
-    right_rect = cv.remap(color_right, right_map1, right_map2, cv.INTER_LINEAR)
-    
-    if num_channels is 1:
-        left_input = cv.cvtColor(left_rect, cv.COLOR_RGB2GRAY)
-        right_input = cv.cvtColor(right_rect, cv.COLOR_RGB2GRAY)
-    else:
-        left_input = left_rect
-        right_input = right_rect
-
-    disparity = stereo.compute(left_input, right_input).astype(np.float32) / 16.0
-    disparity = disparity[:,num_disp:]
-        
-    depth_map = (focal_length * baseline_mm) / disparity
-    depth_map[(depth_map < min_visualize_mm) | (max_visualize_mm < depth_map)] = np.nan
-
     axs[0].clear()
     axs[1].clear()
-    axs[2].clear()
-    axs[0].imshow(left_rect[:, :, [2, 1, 0]])
-    axs[1].imshow(right_rect[:, :, [2, 1, 0]])
-    im = axs[2].imshow(depth_map, cmap='inferno', vmin=min_visualize_mm, vmax=max_visualize_mm)
-    cbar.update_normal(im)
+    axs[0].imshow(color_left[:, :, [2, 1, 0]])
+    axs[1].imshow(color_right[:, :, [2, 1, 0]])
     plt.tight_layout()
     plt.pause(0.001)
