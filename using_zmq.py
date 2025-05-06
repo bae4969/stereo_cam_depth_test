@@ -99,7 +99,7 @@ while key_pressed != 'q':
     left_rect = cv.remap(color_left, left_map1, left_map2, cv.INTER_LINEAR)
     right_rect = cv.remap(color_right, right_map1, right_map2, cv.INTER_LINEAR)
     
-    if num_channels is 1:
+    if num_channels == 1:
         left_input = cv.cvtColor(left_rect, cv.COLOR_RGB2GRAY)
         right_input = cv.cvtColor(right_rect, cv.COLOR_RGB2GRAY)
     else:
