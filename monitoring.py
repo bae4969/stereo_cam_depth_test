@@ -7,21 +7,10 @@ import numpy as np
 from matplotlib import pyplot as plt
 from MyCommon import MyCommon
 import RawVideoFunc
+import os
+from datetime import datetime
 
-My = MyCommon("D:/res", "STEREO_VIDEO", "TEST")
-
-video_src_path = My.GetSrcFilePath("moving.mp4")
-
-T = tifffile.imread(My.GetSrcFilePath("calibration_data/T.tif"))
-P1 = tifffile.imread(My.GetSrcFilePath("calibration_data/P1.tif"))
-left_map1 = tifffile.imread(My.GetSrcFilePath("calibration_data/left_map1.tif"))
-left_map2 = tifffile.imread(My.GetSrcFilePath("calibration_data/left_map2.tif"))
-right_map1 = tifffile.imread(My.GetSrcFilePath("calibration_data/right_map1.tif"))
-right_map2 = tifffile.imread(My.GetSrcFilePath("calibration_data/right_map2.tif"))
-
-image_size = (960, 720)
-focal_length = P1[0, 0]
-baseline_mm = abs(T[0])
+My = MyCommon("E:/res/STEREO_VIDEO", "", "captured_images")
 
 ##############################################################################################
 
@@ -31,9 +20,25 @@ max_visualize_mm = 6000
 fig, axs = plt.subplots(1, 2, figsize=(10, 4), dpi=300)
 
 key_pressed = None
+save_counter = 0
+save_dir = My.GetDstFilePath("")
+os.makedirs(save_dir, exist_ok=True)
+
 def on_key(event):
-	global key_pressed
+	global key_pressed, save_counter, color_left, color_right
 	key_pressed = event.key
+	
+	if event.key == 'c':
+		# 현재 이미지들을 저장
+		timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+		left_filename = os.path.join(save_dir, f"left_{timestamp}_{save_counter:04d}.png")
+		right_filename = os.path.join(save_dir, f"right_{timestamp}_{save_counter:04d}.png")
+		
+		if color_left is not None and color_right is not None:
+			cv.imwrite(left_filename, color_left)
+			cv.imwrite(right_filename, color_right)
+			save_counter += 1
+			print(f"이미지 저장됨: {left_filename}, {right_filename}")
 
 fig.canvas.mpl_connect('key_press_event', on_key)
 
@@ -51,6 +56,12 @@ sub_socket.connect("tcp://192.168.135.32:45000")
 
 poller = zmq.Poller()
 poller.register(sub_socket, zmq.POLLIN)
+
+# 전역 변수로 현재 이미지들을 저장
+color_left = None
+color_right = None
+
+print("프로그램 시작 - 'c' 키를 누르면 이미지가 저장됩니다. 'q' 키를 누르면 종료됩니다.")
 
 while key_pressed != 'q':
     msg_parts = None
@@ -78,3 +89,5 @@ while key_pressed != 'q':
     axs[1].imshow(color_right[:, :, [2, 1, 0]])
     plt.tight_layout()
     plt.pause(0.001)
+
+print(f"총 {save_counter}장의 이미지가 저장되었습니다.")

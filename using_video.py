@@ -4,13 +4,13 @@ import math
 import tifffile
 import numpy as np
 from matplotlib import pyplot as plt
+from matplotlib.ticker import ScalarFormatter
 from MyCommon import MyCommon
 import RawVideoFunc
 
-My = MyCommon("D:/res", "STEREO_VIDEO", "TEST")
+My = MyCommon("E:/res/STEREO_VIDEO", "", "TEST")
 
-video_src_path = My.GetSrcFilePath("250505/record_20250505_1419.mp4")
-video_src_path = My.GetSrcFilePath("moving.mp4")
+video_src_path = My.GetSrcFilePath("record_20250803_1447.mp4")
 
 T = tifffile.imread(My.GetSrcFilePath("calibration_data/T.tif"))
 P1 = tifffile.imread(My.GetSrcFilePath("calibration_data/P1.tif"))
@@ -28,7 +28,7 @@ num_disp = int(math.ceil(max_disp / 16.0)) * 16
 
 min_disp = 0
 num_channels = 1
-block_size = 9
+block_size = 7
 
 stereo = cv.StereoSGBM_create(
     minDisparity=min_disp,
@@ -59,9 +59,23 @@ fig.canvas.mpl_connect('key_press_event', on_key)
 axs[0].set_title(f"left")
 axs[1].set_title(f"right")
 axs[2].set_title(f"depth")
+axs[2].xaxis.set_major_formatter(ScalarFormatter(useOffset=False))
+axs[2].yaxis.set_major_formatter(ScalarFormatter(useOffset=False))
 
 im = axs[2].imshow(np.zeros((100, 100)), cmap='inferno', vmin=min_visualize_mm, vmax=max_visualize_mm)
 cbar = fig.colorbar(im, ax=axs[2], fraction=0.046, pad=0.04, label="Dist (mm)")
+
+##############################################################################################
+
+def img_enhance(img):
+    lab = cv.cvtColor(img, cv.COLOR_BGR2LAB)
+    l, a, b = cv.split(lab)
+    clahe = cv.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    l = clahe.apply(l)
+    enhanced_img = cv.merge((l, a, b))
+    enhanced_img = cv.cvtColor(enhanced_img, cv.COLOR_LAB2BGR)
+    return enhanced_img
+
 
 ##############################################################################################
 
@@ -114,6 +128,9 @@ while key_pressed != 'q':
         plt.pause(1)
         continue
 
+    color_left = img_enhance(color_left)
+    color_right = img_enhance(color_right)
+
     left_rect = cv.remap(color_left, left_map1, left_map2, cv.INTER_LINEAR)
     right_rect = cv.remap(color_right, right_map1, right_map2, cv.INTER_LINEAR)
     
@@ -124,6 +141,10 @@ while key_pressed != 'q':
         left_input = left_rect
         right_input = right_rect
 
+    half_size = (int(image_size[0] / 2), int(image_size[1] / 2))
+    left_input = cv.resize(left_input, dsize=None, fx=0.5, fy=0.5)
+    right_input = cv.resize(right_input, dsize=None, fx=0.5, fy=0.5)
+
     disparity = stereo.compute(left_input, right_input).astype(np.float32) / 16.0
     disparity = disparity[:,num_disp:]
         
@@ -133,9 +154,10 @@ while key_pressed != 'q':
     axs[0].clear()
     axs[1].clear()
     axs[2].clear()
-    axs[0].imshow(left_rect[:, :, [2, 1, 0]])
-    axs[1].imshow(right_rect[:, :, [2, 1, 0]])
+    axs[0].imshow(left_input, cmap='gray')#[:, :, [2, 1, 0]])
+    axs[1].imshow(right_input, cmap='gray')#[:, :, [2, 1, 0]])
     im = axs[2].imshow(depth_map, cmap='inferno', vmin=min_visualize_mm, vmax=max_visualize_mm)
     cbar.update_normal(im)
+    axs[2].ticklabel_format(style='plain', axis='both')  # 이 부분이 핵심
     plt.tight_layout()
     plt.pause(0.001)

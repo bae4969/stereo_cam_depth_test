@@ -8,16 +8,14 @@ from matplotlib import pyplot as plt
 from MyCommon import MyCommon
 import RawVideoFunc
 
-My = MyCommon("D:/res", "STEREO_VIDEO", "TEST")
+My = MyCommon("E:/res/STEREO_VIDEO", "calibration_data", "TEST")
 
-video_src_path = My.GetSrcFilePath("moving.mp4")
-
-T = tifffile.imread(My.GetSrcFilePath("calibration_data/T.tif"))
-P1 = tifffile.imread(My.GetSrcFilePath("calibration_data/P1.tif"))
-left_map1 = tifffile.imread(My.GetSrcFilePath("calibration_data/left_map1.tif"))
-left_map2 = tifffile.imread(My.GetSrcFilePath("calibration_data/left_map2.tif"))
-right_map1 = tifffile.imread(My.GetSrcFilePath("calibration_data/right_map1.tif"))
-right_map2 = tifffile.imread(My.GetSrcFilePath("calibration_data/right_map2.tif"))
+T = tifffile.imread(My.GetSrcFilePath("T.tif"))
+P1 = tifffile.imread(My.GetSrcFilePath("P1.tif"))
+left_map1 = tifffile.imread(My.GetSrcFilePath("left_map1.tif"))
+left_map2 = tifffile.imread(My.GetSrcFilePath("left_map2.tif"))
+right_map1 = tifffile.imread(My.GetSrcFilePath("right_map1.tif"))
+right_map2 = tifffile.imread(My.GetSrcFilePath("right_map2.tif"))
 
 image_size = (960, 720)
 focal_length = P1[0, 0]
